@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客服审核工作台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>客服审核工作台</h1>
+
+      <section class="card">
+        <h2>创建审核任务</h2>
+        <form id="createForm" class="grid">
+          <input name="customer_name" placeholder="客户姓名" required />
+          <input name="customer_email" type="email" placeholder="客户邮箱" required />
+          <input name="order_no" placeholder="订单号" required />
+          <input name="issue_type" placeholder="问题类型" required />
+          <textarea name="issue_description" placeholder="问题描述" required></textarea>
+          <button type="submit">创建任务</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>任务列表</h2>
+        <button id="refreshBtn">刷新</button>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>订单号</th>
+              <th>客户</th>
+              <th>状态</th>
+              <th>审核人</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="taskBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <dialog id="reviewDialog">
+      <form method="dialog" id="reviewForm" class="grid">
+        <h3>审核任务</h3>
+        <input type="hidden" name="id" />
+        <input name="reviewer" placeholder="审核人" required />
+        <select name="status" required>
+          <option value="APPROVED">通过</option>
+          <option value="REJECTED">拒绝</option>
+        </select>
+        <textarea name="review_note" placeholder="审核备注"></textarea>
+        <menu>
+          <button value="cancel">取消</button>
+          <button value="default" type="submit">提交审核</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
