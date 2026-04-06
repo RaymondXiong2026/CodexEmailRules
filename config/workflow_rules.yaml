@@ -1,0 +1,56 @@
+# 请将《店铺邮件自动处理流程设计.md》中的配置完整映射到此文件
+categories:
+  - primary: order
+    secondary: ["modify_order", "cancel_order", "invoice"]
+  - primary: shipping
+    secondary: ["delay", "tracking", "lost_package"]
+  - primary: refund_return
+    secondary: ["return_request", "refund_progress", "exchange"]
+  - primary: product
+    secondary: ["spec", "compatibility", "quality"]
+  - primary: payment
+    secondary: ["payment_failed", "duplicate_charge", "coupon"]
+  - primary: account
+    secondary: ["login", "security", "privacy"]
+  - primary: complaint
+    secondary: ["service_attitude", "platform_complaint", "bad_review"]
+  - primary: other
+    secondary: ["other_general"]
+
+priority:
+  order: { priority: "P2", sla_hours: 12, reason: "order_sensitive" }
+  shipping: { priority: "P2", sla_hours: 12, reason: "shipping_issue" }
+  refund_return: { priority: "P1", sla_hours: 4, reason: "refund_urgency" }
+  product: { priority: "P3", sla_hours: 24, reason: "normal_consult" }
+  payment: { priority: "P1", sla_hours: 4, reason: "payment_risk" }
+  account: { priority: "P1", sla_hours: 4, reason: "security" }
+  complaint: { priority: "P1", sla_hours: 2, reason: "emotion_upgrade" }
+  other: { priority: "P3", sla_hours: 24, reason: "fallback" }
+  default: { priority: "P2", sla_hours: 24, reason: "default" }
+
+thresholds:
+  low_confidence: 0.60
+  rag_min_score: 0.25
+
+risk_patterns:
+  compensation: ["赔偿", "退款 double", "chargeback", "损失"]
+  legal: ["律师", "起诉", "法律", "lawyer", "court"]
+  escalation: ["投诉", "升级", "举报", "angry", "furious"]
+  policy_violation_promise: ["保证全额", "永久保修", "违规承诺"]
+
+compliance:
+  - 不得做超出平台政策的承诺
+  - 赔付与法律风险类必须建议人工复核
+  - 回复需礼貌且可执行
+
+knowledge_base:
+  - store_id: store_a
+    primary: shipping
+    secondary: tracking
+    title: 物流追踪查询指引
+    content: 客户可在订单详情页点击物流单号查询，通常 24 小时内更新轨迹。
+  - store_id: store_a
+    primary: refund_return
+    secondary: return_request
+    title: 退货政策
+    content: 收货后 30 天内可申请退货，需保持商品完好并附带原包装。
