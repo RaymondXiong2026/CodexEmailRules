@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客服审核工作台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-100 text-slate-800">
+    <div class="min-h-screen lg:grid lg:grid-cols-[240px_380px_1fr]">
+      <aside class="bg-slate-900 text-slate-100 p-5 flex flex-col gap-4">
+        <h1 class="text-xl font-semibold">邮件审核台</h1>
+        <nav id="sidebar" class="space-y-2 text-sm">
+          <button data-filter="pending" class="w-full rounded px-3 py-2 bg-slate-700 text-left">待审核</button>
+          <button data-filter="processed" class="w-full rounded px-3 py-2 hover:bg-slate-700 text-left">已处理</button>
+          <button data-filter="high_risk" class="w-full rounded px-3 py-2 hover:bg-slate-700 text-left">高风险</button>
+          <button data-filter="dashboard" class="w-full rounded px-3 py-2 hover:bg-slate-700 text-left">数据看板</button>
+        </nav>
+      </aside>
+
+      <section class="border-r border-slate-200 bg-white">
+        <div class="p-4 border-b border-slate-200 flex gap-2">
+          <select id="sortSelect" class="rounded border border-slate-300 px-2 py-1 text-sm">
+            <option value="priority">按优先级</option>
+            <option value="time">按时间</option>
+          </select>
+          <button id="refreshBtn" class="rounded bg-slate-900 px-3 py-1 text-sm text-white">刷新</button>
+        </div>
+        <ul id="mailList" class="divide-y divide-slate-200 max-h-[calc(100vh-72px)] overflow-auto"></ul>
+      </section>
+
+      <main class="p-4 md:p-6 space-y-4 overflow-auto max-h-screen">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+          <h2 class="text-lg font-semibold mb-2">客户邮件原文</h2>
+          <div id="mailContent" class="max-h-52 overflow-auto rounded border border-slate-200 p-3 text-sm leading-relaxed"></div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <h3 class="font-semibold mb-2">AI 分类与结构化信息</h3>
+            <p id="mailCategory" class="text-sm mb-2 text-indigo-700"></p>
+            <dl id="structuredData" class="text-sm space-y-1"></dl>
+          </div>
+          <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <h3 class="font-semibold mb-2">风险标记</h3>
+            <p id="riskLevel" class="text-sm mb-4"></p>
+            <button id="markRiskBtn" class="rounded bg-red-600 px-3 py-2 text-white text-sm">标记为高风险</button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+          <h3 class="font-semibold mb-2">AI 回复草稿（可编辑）</h3>
+          <textarea id="replyDraft" class="w-full min-h-40 rounded border border-slate-300 p-3 text-sm"></textarea>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button id="sendNowBtn" class="rounded bg-emerald-600 px-4 py-2 text-white text-sm">直接发送</button>
+            <button id="sendEditedBtn" class="rounded bg-indigo-600 px-4 py-2 text-white text-sm">编辑后发送</button>
+            <button id="regenerateBtn" class="rounded bg-amber-500 px-4 py-2 text-white text-sm">退回重生成</button>
+          </div>
+        </div>
+
+        <div id="statusBanner" class="hidden rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700"></div>
+      </main>
+    </div>
+
+    <script>
+      const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api';
+      const state = {
+        filter: 'pending',
+        sort: 'priority',
+        mails: [],
+        selectedMail: null
+      };
+
+      const els = {
+        sidebar: document.getElementById('sidebar'),
+        sortSelect: document.getElementById('sortSelect'),
+        mailList: document.getElementById('mailList'),
+        mailContent: document.getElementById('mailContent'),
+        mailCategory: document.getElementById('mailCategory'),
+        structuredData: document.getElementById('structuredData'),
+        replyDraft: document.getElementById('replyDraft'),
+        riskLevel: document.getElementById('riskLevel'),
+        statusBanner: document.getElementById('statusBanner'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        sendNowBtn: document.getElementById('sendNowBtn'),
+        sendEditedBtn: document.getElementById('sendEditedBtn'),
+        regenerateBtn: document.getElementById('regenerateBtn'),
+        markRiskBtn: document.getElementById('markRiskBtn')
+      };
+
+      const formatRemaining = (deadline) => {
+        const ms = new Date(deadline).getTime() - Date.now();
+        if (ms <= 0) return '已超时';
+        const minutes = Math.floor(ms / 60000);
+        return `${minutes} 分钟`;
+      };
+
+      async function fetchMails() {
+        const query = new URLSearchParams({ filter: state.filter, sort: state.sort });
+        const response = await fetch(`${API_BASE_URL}/review-mails?${query.toString()}`);
+        if (!response.ok) throw new Error('邮件列表加载失败');
+        state.mails = await response.json();
+        state.selectedMail = state.mails[0] || null;
+        renderList();
+        renderDetail();
+      }
+
+      function renderList() {
+        els.mailList.innerHTML = '';
+        state.mails.forEach((mail) => {
+          const item = document.createElement('li');
+          item.className = `p-3 cursor-pointer hover:bg-slate-50 ${state.selectedMail?.id === mail.id ? 'bg-indigo-50' : ''}`;
+          item.innerHTML = `
+            <p class="font-medium text-sm truncate">${mail.subject}</p>
+            <p class="text-xs text-slate-500">${mail.sender} · ${mail.category}</p>
+            <p class="text-xs mt-1 flex justify-between">
+              <span>优先级: ${mail.priority}</span>
+              <span>SLA: ${formatRemaining(mail.slaDeadline)}</span>
+            </p>
+          `;
+          item.addEventListener('click', () => {
+            state.selectedMail = mail;
+            renderList();
+            renderDetail();
+          });
+          els.mailList.appendChild(item);
+        });
+      }
+
+      function renderDetail() {
+        const mail = state.selectedMail;
+        if (!mail) {
+          els.mailContent.innerHTML = '<p class="text-slate-400">暂无邮件</p>';
+          els.mailCategory.textContent = '';
+          els.structuredData.innerHTML = '';
+          els.replyDraft.value = '';
+          els.riskLevel.textContent = '';
+          return;
+        }
+
+        els.mailContent.innerHTML = mail.originalHtml || `<pre>${mail.originalText || ''}</pre>`;
+        els.mailCategory.textContent = `分类：${mail.category}`;
+        els.riskLevel.textContent = `当前风险等级：${mail.riskLevel || 'LOW'}`;
+        els.replyDraft.value = mail.aiDraft || '';
+        els.structuredData.innerHTML = Object.entries(mail.structured || {})
+          .map(([key, value]) => `<div class="grid grid-cols-[88px_1fr] gap-2"><dt class="text-slate-500">${key}</dt><dd>${value ?? '-'}</dd></div>`)
+          .join('');
+      }
+
+      async function syncStatus(action) {
+        if (!state.selectedMail) return;
+
+        const response = await fetch(`${API_BASE_URL}/review-mails/${state.selectedMail.id}/actions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, draftReply: els.replyDraft.value })
+        });
+
+        if (!response.ok) throw new Error('状态同步失败');
+        const result = await response.json();
+
+        els.statusBanner.classList.remove('hidden');
+        els.statusBanner.textContent = `邮件 ${result.mailId} 操作完成，最新状态：${result.status}`;
+
+        await fetchMails();
+      }
+
+      els.sidebar.addEventListener('click', async (event) => {
+        if (!event.target.dataset.filter) return;
+        state.filter = event.target.dataset.filter;
+        [...els.sidebar.querySelectorAll('button')].forEach((btn) => btn.classList.remove('bg-slate-700'));
+        event.target.classList.add('bg-slate-700');
+        await fetchMails();
+      });
+
+      els.sortSelect.addEventListener('change', async () => {
+        state.sort = els.sortSelect.value;
+        await fetchMails();
+      });
+
+      els.refreshBtn.addEventListener('click', fetchMails);
+      els.sendNowBtn.addEventListener('click', () => syncStatus('SEND_NOW'));
+      els.sendEditedBtn.addEventListener('click', () => syncStatus('SEND_AFTER_EDIT'));
+      els.regenerateBtn.addEventListener('click', () => syncStatus('REGENERATE'));
+      els.markRiskBtn.addEventListener('click', () => syncStatus('MARK_RISK'));
+
+      fetchMails().catch((error) => {
+        els.statusBanner.classList.remove('hidden');
+        els.statusBanner.className = 'rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700';
+        els.statusBanner.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>

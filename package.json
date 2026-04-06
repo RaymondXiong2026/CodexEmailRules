@@ -1,0 +1,17 @@
+{
+  "name": "codex-email-rules-extension",
+  "version": "1.0.0",
+  "description": "Enterprise extension modules for customer email review, SMTP auto-send, and ERP integration",
+  "main": "src/examples/integrationExample.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/examples/integrationExample.js",
+    "check": "node --check src/config/env.js && node --check src/modules/mailer/smtpClient.js && node --check src/modules/mailer/sendService.js && node --check src/modules/erp/erpClient.js && node --check src/modules/erp/mappers.js && node --check src/modules/erp/retryQueue.js && node --check src/modules/workflow/reviewSyncService.js && node --check src/examples/integrationExample.js"
+  },
+  "dependencies": {
+    "axios": "^1.8.2",
+    "dotenv": "^16.4.7",
+    "nodemailer": "^6.10.0",
+    "pino": "^9.6.0"
+  }
+}
